@@ -11,3 +11,5 @@ connect to db:
 docker-compose exec db bash
 
 
+docker-compose exec container_name php /var/www/artisan migrate
+
