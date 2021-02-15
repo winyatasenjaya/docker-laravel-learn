@@ -1,0 +1,70 @@
+version: '3.1'
+services:
+
+  #PHP Service
+  app:
+    build:
+      context: .
+      dockerfile: DockerFile
+    image: digitalocean.com/php
+    container_name: docker_laravel_app
+    restart: unless-stopped
+    tty: true
+    environment:
+      SERVICE_NAME: app
+      SERVICE_TAG: dev
+    working_dir: /var/www
+    networks:
+      - app-network-laravel
+    volumes:
+      #The app service is bind-mounting the ~/laravel-app folder, which contains the application code, to the /var/www folder in the container
+      - ./laravel-app/:/var/www
+      # binding your PHP configuration file, ~/laravel-app/php/local.ini, to /usr/local/etc/php/conf.d/local.ini inside the container
+      - ./php/local.ini:/usr/local/etc/php/conf.d/local.ini
+
+  #Nginx service
+  nginx:
+    image: nginx:alpine
+    container_name: docker_laravel_nginx
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - app-network-laravel
+    volumes:
+      #The first bind mount binds the application code in the ~/laravel-app directory to the /var/www directory inside the container.
+      - ./laravel-app/:/var/www
+      #The configuration file that you will add to ~/laravel-app/nginx/conf.d/ will also be mounted to /etc/nginx/conf.d/ in the container
+      - ./nginx/conf.d/:/etc/nginx/conf.d/
+
+  db:
+    image: mysql:5.7.22
+    container_name: docker_laravel_mysql
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_DATABASE: laravel
+      MYSQL_ROOT_PASSWORD: r00t
+      SERVICE_TAG: dev
+      SERVICE_NAME: mysql
+    volumes:
+      #This allows you to stop and restart the db service without losing data
+      - dbdata:/var/lib/mysql
+      #This bind mount binds ~/laravel-app/mysql/my.cnf to /etc/mysql/my.cnf in the container.
+      - ./mysql/my.cnf:/etc/mysql/my.cnf
+    networks:
+      - app-network-laravel
+
+#Docker Networks
+networks:
+  app-network-laravel:
+    driver: bridge
+
+#Volumes
+volumes:
+  dbdata:
+    driver: local
